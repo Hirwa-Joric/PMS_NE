@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local databases
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Camera and image cache
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.npy
+!dashboard/static/img/*.png
+!dashboard/static/img/*.jpg

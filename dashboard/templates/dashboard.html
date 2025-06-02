@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Management Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <meta http-equiv="refresh" content="300"> <!-- Auto-refresh page every 5 minutes as a fallback -->
+</head>
+<body>
+    <div class="container-fluid">
+        <header class="py-3 mb-3 border-bottom bg-dark text-white">
+            <div class="container-fluid d-flex align-items-center">
+                <h1 class="fs-4">NEW MAPS Parking Management Dashboard</h1>
+                <div class="ms-auto" id="last-updated">Last Updated: -</div>
+            </div>
+        </header>
+
+        <!-- Stats Section -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title">Vehicles Currently Parked</h5>
+                        <p class="card-text display-4" id="current-vehicles">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title">Available Parking Spots</h5>
+                        <p class="card-text display-4" id="available-spots">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Payments Today</h5>
+                        <p class="card-text display-4" id="total-payments">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-secondary">
+                    <div class="card-body">
+                        <h5 class="card-title">Transactions Today</h5>
+                        <p class="card-text display-4" id="total-transactions">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h2 class="h5 mb-0">System Alerts</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Plate Number</th>
+                                        <th>Timestamp</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alert-log-table">
+                                    <tr>
+                                        <td colspan="4" class="text-center">Loading alerts...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="row">
+            <!-- Check-ins -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="h5 mb-0">Vehicle Check-ins</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Plate Number</th>
+                                        <th>Entry Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="checkin-log-table">
+                                    <tr>
+                                        <td colspan="2" class="text-center">Loading check-ins...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Check-outs -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h2 class="h5 mb-0">Vehicle Check-outs</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Plate Number</th>
+                                        <th>Entry Time</th>
+                                        <th>Exit Time</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="checkout-log-table">
+                                    <tr>
+                                        <td colspan="5" class="text-center">Loading check-outs...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h2 class="h5 mb-0">Payment Transactions</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Plate Number</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payment-log-table">
+                                    <tr>
+                                        <td colspan="4" class="text-center">Loading payments...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
