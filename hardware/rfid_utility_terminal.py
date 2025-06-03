@@ -363,9 +363,9 @@ def write_card_data(port, sketch_relative_path="writing_on_rfid/writing_on_rfid.
         print("\nSkipping sketch upload. Make sure the correct sketch is already uploaded.")
     
     # Get card data from user (do this before connecting to avoid timeout issues)
-    plate_number = input("\nEnter plate number to write (7 chars, e.g., RAD123A): ").strip().upper()
-    if len(plate_number) != 7:  # Strict 7 char validation
-        print("\n[ERROR] Invalid plate number. Must be exactly 7 characters.")
+    plate_number = input("\nEnter plate number to write (max 8 chars, e.g., RAD123A): ").strip().upper()
+    if not plate_number or len(plate_number) > 8:  # Allow up to 8 chars for flexibility
+        print("\n[ERROR] Invalid plate number. Must be between 1-8 characters.")
         return
     
     try:
@@ -374,9 +374,12 @@ def write_card_data(port, sketch_relative_path="writing_on_rfid/writing_on_rfid.
         if balance_val < 0:
             print("\n[ERROR] Balance cannot be negative.")
             return
+        if balance_val > 1000000:  # Set a reasonable upper limit
+            print("\n[ERROR] Balance value too large. Maximum allowed is 1,000,000 RWF.")
+            return
         balance_str = balance_input  # Keep as string for sending
     except ValueError:
-        print("\n[ERROR] Balance must be a number.")
+        print("\n[ERROR] Balance must be a valid number.")
         return
     
     print("\nConnecting to Arduino...")
@@ -389,73 +392,131 @@ def write_card_data(port, sketch_relative_path="writing_on_rfid/writing_on_rfid.
         arduino.reset_input_buffer()
         arduino.reset_output_buffer()
         
-        print("Waiting for Arduino to be ready (expecting 'CARD_WRITER_READY')...")
+        print("Waiting for Arduino card writer to be ready...")
         if not wait_for_arduino_msg(arduino, "CARD_WRITER_READY", timeout_seconds=10):
             print("\n[ERROR] Arduino writer sketch did not initialize correctly.")
             return
         
         print("\nPlease present an RFID card to the reader...")
-        if not wait_for_arduino_msg(arduino, "Card_Detected", timeout_seconds=30):
-            print("\n[ERROR] Card not detected by Arduino within timeout.")
+        
+        # Wait for card detection and plate prompt
+        card_detected = False
+        waiting_for_plate_prompt = False
+        
+        timeout = time.time() + 30  # 30 seconds to place card
+        while time.time() < timeout and not waiting_for_plate_prompt:
+            line = wait_for_arduino_msg(arduino, "", timeout_seconds=1, print_all=True)
+            if line:
+                if "CARD_DETECTED" in line:
+                    card_detected = True
+                    print("Card detected by reader!")
+                elif "WAITING_FOR_PLATE_PROMPT" in line and card_detected:
+                    waiting_for_plate_prompt = True
+            
+        if not card_detected or not waiting_for_plate_prompt:
+            print("\n[ERROR] Card not detected or Arduino didn't request plate data within timeout.")
             return
         
-        # Send Plate Number
-        if not wait_for_arduino_msg(arduino, "Prompt_Plate", timeout_seconds=5):
-            print("\n[ERROR] Arduino did not prompt for plate number.")
+        # Send the "SEND_PLATE" command to trigger Arduino to accept plate data
+        print("Sending plate number prompt signal...")
+        arduino.write("SEND_PLATE\n".encode())
+        
+        # Wait for Arduino to confirm it's ready for plate data
+        if not wait_for_arduino_msg(arduino, "READY_FOR_PLATE", timeout_seconds=5):
+            print("\n[ERROR] Arduino did not confirm readiness for plate data.")
             return
-            
+        
+        # Send plate number
+        print(f"Sending plate number: {plate_number}#")
         arduino.write(f"{plate_number}#".encode())
-        print(f"Sent plate: {plate_number}#")
         
         # Wait for plate confirmation
-        if not wait_for_arduino_msg(arduino, f"Plate_Received:{plate_number}", timeout_seconds=10):
-            print(f"\n[ERROR] Arduino did not confirm plate '{plate_number}' reception.")
+        plate_received = False
+        waiting_for_balance_prompt = False
+        
+        timeout = time.time() + 10  # 10 seconds to confirm plate
+        while time.time() < timeout and not waiting_for_balance_prompt:
+            line = wait_for_arduino_msg(arduino, "", timeout_seconds=1, print_all=True)
+            if line:
+                if f"PLATE_RECEIVED:{plate_number}" in line:
+                    plate_received = True
+                    print("Plate number confirmed by Arduino.")
+                elif "WAITING_FOR_BALANCE_PROMPT" in line and plate_received:
+                    waiting_for_balance_prompt = True
+                elif "INVALID_PLATE_FORMAT" in line:
+                    print("\n[ERROR] Plate format rejected by Arduino. Try again.")
+                    return
+        
+        if not plate_received or not waiting_for_balance_prompt:
+            print("\n[ERROR] Plate not confirmed or Arduino didn't request balance within timeout.")
             return
         
-        # Send Balance
-        if not wait_for_arduino_msg(arduino, "Prompt_Balance", timeout_seconds=5):
-            print("\n[ERROR] Arduino did not prompt for balance.")
+        # Send the "SEND_BALANCE" command to trigger Arduino to accept balance data
+        print("Sending balance prompt signal...")
+        arduino.write("SEND_BALANCE\n".encode())
+        
+        # Wait for Arduino to confirm it's ready for balance data
+        if not wait_for_arduino_msg(arduino, "READY_FOR_BALANCE", timeout_seconds=5):
+            print("\n[ERROR] Arduino did not confirm readiness for balance data.")
             return
-            
+        
+        # Send balance
+        print(f"Sending balance: {balance_str}#")
         arduino.write(f"{balance_str}#".encode())
-        print(f"Sent balance: {balance_str}#")
         
-        # Wait for balance confirmation
-        if not wait_for_arduino_msg(arduino, f"Balance_Received:{balance_str}", timeout_seconds=10):
-            print(f"\n[ERROR] Arduino did not confirm balance '{balance_str}' reception.")
+        # Wait for balance confirmation and writing to begin
+        balance_received = False
+        writing_started = False
+        
+        timeout = time.time() + 10  # 10 seconds to confirm balance
+        while time.time() < timeout and not writing_started:
+            line = wait_for_arduino_msg(arduino, "", timeout_seconds=1, print_all=True)
+            if line:
+                if f"BALANCE_RECEIVED:{balance_str}" in line:
+                    balance_received = True
+                    print("Balance confirmed by Arduino.")
+                elif "WRITING_DATA" in line and balance_received:
+                    writing_started = True
+                    print("Data write operation started.")
+                elif "INVALID_BALANCE_FORMAT" in line:
+                    print("\n[ERROR] Balance format rejected by Arduino. Try again.")
+                    return
+        
+        if not balance_received or not writing_started:
+            print("\n[ERROR] Balance not confirmed or write operation didn't start within timeout.")
             return
         
         print("\nWriting data to card...")
         
-        # Monitor for specific success/failure messages for each block write
-        block2_success = False
-        block4_success = False
-        operation_finished = False
+        # Monitor for specific success/failure messages during writing
+        plate_block_success = False
+        balance_block_success = False
+        write_complete = False
+        card_operation_finished = False
         
         log_buffer = []
         op_timeout = time.time() + 20  # 20 seconds for actual card writing
         
-        # Wait for the write operation to begin
-        if not wait_for_arduino_msg(arduino, "Attempting_Write", timeout_seconds=5):
-            print("\n[ERROR] Arduino did not start write operation.")
-            return
-        
         # Monitor write operation progress
-        while time.time() < op_timeout and not operation_finished:
+        while time.time() < op_timeout and not card_operation_finished:
             line = wait_for_arduino_msg(arduino, "", timeout_seconds=1, print_all=True)  # Read any line
             if line:
                 log_buffer.append(line)
-                if "Write_Block_Success:2" in line: block2_success = True
-                if "Write_Block_Success:4" in line: block4_success = True
-                if "Auth_Fail" in line or "Write_Block_Fail" in line:
+                if "WRITE_BLOCK_SUCCESS:1" in line or "WRITE_BLOCK_SUCCESS:2" in line:
+                    plate_block_success = True
+                if "WRITE_BLOCK_SUCCESS:4" in line:
+                    balance_block_success = True
+                if "WRITE_COMPLETE" in line:
+                    write_complete = True
+                if "AUTH_FAIL" in line or "WRITE_BLOCK_FAIL" in line:
                     print("\n[ERROR_WRITE] Arduino reported a write/auth failure during block operation.")
                     # Continue monitoring - don't break yet
-                if "Card_Operation_Finished" in line:
-                    operation_finished = True
+                if "CARD_OPERATION_FINISHED" in line:
+                    card_operation_finished = True
             else:  # wait_for_arduino_msg returned None (timeout for that short read)
                 pass  # Just continue polling
         
-        if block2_success and block4_success and operation_finished:
+        if plate_block_success and balance_block_success and write_complete and card_operation_finished:
             print("\n[SUCCESS] Card data written successfully to both blocks.")
             
             # Get card UID
@@ -501,7 +562,7 @@ def write_card_data(port, sketch_relative_path="writing_on_rfid/writing_on_rfid.
                 print(f"  {l}")
         
         # Wait for card removal confirmation
-        wait_for_arduino_msg(arduino, "Card_Removed", timeout_seconds=20, print_all=True)
+        wait_for_arduino_msg(arduino, "CARD_REMOVED", timeout_seconds=20, print_all=True)
         
     except serial.SerialException as e:
         print(f"\n[ERROR] Serial communication error: {e}")
@@ -571,6 +632,7 @@ def check_card_balance(card_uid=None):
 
 def view_transaction_history(plate=None):
     """View transaction history for a specific plate number or recent transactions."""
+    conn = None
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row  # Use dictionary-like rows
@@ -583,7 +645,6 @@ def view_transaction_history(plate=None):
             
             if not card:
                 print(f"No card found with plate number: {plate}")
-                conn.close()
                 return
             
             card_id = card[0]
@@ -646,13 +707,15 @@ def view_transaction_history(plate=None):
             print(f"\nShowing {len(transactions)} transaction(s)")
         else:
             print("No transactions found.")
-        
-        conn.close()
     except sqlite3.Error as e:
         print(f"[DATABASE ERROR] {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def initialize_database():
     """Initialize the database with required tables if they don't exist."""
+    conn = None
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -687,8 +750,14 @@ def initialize_database():
         ''')
         
         conn.commit()
-        conn.close()
- https://github.com/Hirwa-Joric/PMS_NE.git
+        print(f"Database initialized successfully at {DB_PATH}")
+    except sqlite3.Error as e:
+        print(f"[DATABASE ERROR] Failed to initialize database: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+def main_menu():
     while True:
         clear_screen()
         print("\n==================================================")

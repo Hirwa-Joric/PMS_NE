@@ -35,7 +35,7 @@ except ImportError:
     SAVE_DIR = 'plates'
     MAX_DISTANCE = 50
     MIN_DISTANCE = 0
-    GATE_BAUD_RATE = 115200
+    GATE_BAUD_RATE = 9600
     print("[WARNING] Using fallback configuration paths.")
 
 
@@ -104,7 +104,7 @@ def has_unpaid_record(plate):
         cursor.execute("""
             SELECT COUNT(*) FROM parking_log
             WHERE plate_number = ? AND
-            (exit_time IS NULL OR payment_status != 'PAID')
+            exit_time IS NULL AND payment_status = 'UNPAID'
         """, (plate,))
         count = cursor.fetchone()[0]
         conn.close()

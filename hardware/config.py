@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+    #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -23,7 +23,7 @@ DB_PATH = os.path.join(HARDWARE_DIR, DB_FILENAME)
 MODEL_PATH = os.path.join(MODEL_DIR, 'runs/detect/train/weights/best.pt')
 
 # Serial communication
-GATE_BAUD_RATE = 115200  # For distance sensor and gate control
+GATE_BAUD_RATE = 9600  # For distance sensor and gate control
 RFID_BAUD_RATE = 9600    # For RFID reader/writer
 
 # RFID and Payment settings
@@ -38,6 +38,7 @@ MIN_DISTANCE = 0          # cm - minimum distance for sensor detection
 CAPTURE_THRESHOLD = 3     # number of consistent reads before logging a plate
 GATE_OPEN_TIME = 15       # seconds to keep gate open after RFID authorization
 PAYMENT_GRACE_PERIOD = 5  # minutes allowed to exit after payment
+PAYMENT_GATE_DELAY = 5    # seconds to wait before opening gate after payment verification
 
 # Gate control commands
 GATE_OPEN_COMMAND = b'1'
@@ -46,6 +47,10 @@ ALERT_COMMAND = b'2'
 
 # Arduino configuration
 USE_SINGLE_ARDUINO = False  # Set to False for initial testing with separate Arduinos for gate and payment
+
+# Arduino port configuration - can be set manually or will be auto-detected
+GATE_ARDUINO_PORT = None    # Set to specific port like '/dev/ttyACM0' to override auto-detection
+PAYMENT_ARDUINO_PORT = None # Set to specific port like '/dev/ttyACM1' to override auto-detection
 
 # Auto-detect Arduino serial ports
 def detect_arduino_ports():

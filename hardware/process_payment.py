@@ -180,12 +180,12 @@ def process_payment(plate, balance, ser, db_path=DB_PATH):
             # Update database
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
-            # Update parking_log
+            # Update parking_log - don't set exit_time yet, only mark as PAID
             cursor.execute("""
                 UPDATE parking_log 
-                SET exit_time = ?, amount_due = ?, payment_status = 'PAID' 
+                SET amount_due = ?, payment_status = 'PAID' 
                 WHERE log_id = ?
-            """, (now, amount_due, log_id))
+            """, (amount_due, log_id))
             
             # Update rfid_cards if we have the card_uid
             if rfid_uid:

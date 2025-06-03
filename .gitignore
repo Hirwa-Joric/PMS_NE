@@ -15,7 +15,6 @@ build/
 
 # IDE specific files
 .idea/
-.vscode/
 *.swp
 *.swo
 
@@ -42,3 +41,7 @@ Desktop.ini
 *.npy
 !dashboard/static/img/*.png
 !dashboard/static/img/*.jpg
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
+branch_structure.json
